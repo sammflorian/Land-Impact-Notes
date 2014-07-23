@@ -1,0 +1,86 @@
+LAND IMPACT (LI) is a measure of how complicated an object is to render.  All parcels in Second Life have a certain maximum LI, which limits the number of objects that can be rezzed there.  Land impact is calculated by Second Life in two different ways:
+
+1) In the OLD SYSTEM, LI simply means "number of prims", which is how SL originally worked.  We'll just call this "number of prims" in what follows, although the build window calls this "land impact" too.
+
+2) In the NEW SYSTEM, LI is calculated using a complex formula, which takes into account the size, shape, scripts, and physics attributes of an object.  When we talk about LI in what follows, this is what we mean.
+
+------------------------------------------------------------------------------------------
+HOW CAN I MOVE AN OBJECT INTO THE NEW SYSTEM?
+Objects (or linksets) can exist either in the old system or the new system.      By default, prims and sculpties exist in the old system (so that legacy builds still work), while mesh objects exist in the new system.  However, you can move an object from the old system to the new system by doing one of the following:
+1) Link it to a mesh object.
+2) Change the physics type of any of its components to "Convex Hull" or "None" (see below).
+3) Give any surface of any prim a normal or specular map.
+4) Set the alpha mode of any texture to something other than "Alpha blending."
+
+------------------------------------------------------------------------------------------
+WHY WOULD I WANT TO DO THAT?
+For a few reasons.
+1) You might want to include mesh in your build, or give your build some of the new advanced "materials" texturing.
+2) Only "new system" objects can use keyframed motion.
+3) Sometimes, the new system LI is less than the number of prims, so that you can reduce your object's land impact. That will be the focus of this notecard.
+
+
+------------------------------------------------------------------------------------------
+HOW DO I FIGURE OUT THIS NEW LAND IMPACT FOR AN OBJECT?
+The best way is to select the object, and then click on the "More Info" link in the build window, which is near the place where it says "Land Impact". This will show you a number of pieces of information, but the three we want are the Download, Physics, and Server costs.  The land impact is the largest of these values, rounded to the nearest integer.  (Some sources say that this is always rounded up, but my experiments say no.)
+
+Note that these numbers are available even if your object is still in the old system, so this is a great way to double-check on your build before switching it into the new system.  (And double-checking is a really good idea, because even individual prims can have a LI of thousands in the new system.)
+
+Below, I describe some basic features of these three "costs".  But there's no simple formula for two of them, and the best answer to the question "how do I figure out LI?" is just "build it and check".
+
+------------------------------------------------------------------------------------------
+SERVER COST
+This is a measure of the load that the object places on the servers themselves, just to keep track of the object.  This is the one that is calculated with a simple formula:
+0.5*(# of prims) + 0.25*(# of scripts)
+
+Yes, scripts count towards LI!  If you have a script in every child prim, you might want to consider consolidating them: llSetLinkPrimitiveParamsFast is your friend! 
+
+This formula means that the LI of a build is always at LEAST half the number of prims: an object with 10 prims has an LI of at least 5; an object with 11 prims has an LI of at least 6 (5.5 rounded), and so forth.
+
+------------------------------------------------------------------------------------------
+DOWNLOAD COST (DC)
+This is a measure of the amount of information that needs to be downloaded by the viewer in order to render and display the object.  There's no fixed formula for it, but here are some observations about how it works:
+• The download cost depends on the size of the prim: bigger objects usually have larger download costs.
+• If we consider the "standard" prim types without any torturing:
+     • Boxes have a DC of 0.06 at all sizes.
+     • Cylinders have a DC between 0.06 and 1, depending on size.
+     • Spheres have a DC between about 0.9 and 1.
+     • Toruses always have a DC of 1.
+     • Rings have a DC between 0.1 and 1.0.
+     • Tubes have a DC between 0.4 and 1.0.
+     • The default apple sculpty has a DC between 1.3 and 2. Dunno about other sculpties but expect similar results.
+• DC for an object seems to just be the sum of the DCs of each of the individual prims.
+• Some "torturing" methods change DC, while others do not:
+     • Tapering doesn't seem to make a difference.
+     • Dimpling a sphere reduces DC, but path cut does not. If you want a hemisphere, consider a 50% dimple over a 50% path cut.
+     • Path cut and hollow affects cylinders, but not cubes.
+     • Twist affects cylinders too, even if the twist is invisible.
+     • I haven't tried the others, so I'll leave that to you. :)
+
+------------------------------------------------------------------------------------------
+PHYSICS COST (PC)
+The physics cost measures the complexity of an object when it interacts with physical objects and avatars.  This is where some prims can really get into trouble: toruses, tubes, rings, and sculpties can easily have PCs in the thousands!  Also, certain types of tortures, like twisting and hollowing and path cutting can affect PC as well.
+This sounds rather bleak, but there is a solution to this problem, and that is by setting a prim's PHYSICS TYPE.
+
+------------------------------------------------------------------------------------------
+WHAT IS THE PHYSICS TYPE?
+Every prim (or mesh) in an object has one of three physics types: either "Prim", "Convex Hull", or "None".  This can be set in the Features tab of the build window.  You can use Edit Linked to set the physics type of individual components of the build.
+
+• PRIM: A prim with "prim physics" has all of the expected properties.  For example, you can walk through a hollow cylinder, but you can't walk through the walls.  This is usually the most expensive setting in terms of PC.
+
+• CONVEX HULL: If you set a prim to "Convex Hull", it's like shrink-wrapping it in invisible plastic.  A hollow cylinder set to convex hull will behave exactly the same as a non-hollow cylinder; a torus with convex hull will behave as if its central hole isn't there.  This can drastically reduce the PC of a prim: for instance, a torus with "convex hull" might have a physics cost of 1 or 2, rather than 3000!  The shrink wrap is around the individual prim, not the entire linkset.
+A word of warning though: if even one of the prims in an object is set to "convex hull", the entire object will shift into the new system.  So for instance, if you have a build with multiple toruses, you should use Edit Linked and shift-click to select all of them, and then set all of them to "Convex Hull" at the same time.
+
+• NONE: A prim set to "None" has no physics cost at all!  That prim will act as if it were phantom: objects and avatars will pass right through it.  This is a great setting for small bits of your build which avatars don't need to interact with, ornamental features and whatnot, especially toruses, rings, tubes, sculpties and certain types of tortured prims.  Two warnings, though:
+1) Once a single prim is set to "None", the entire linkset is shifted into the new system, just as with Convex Hull.  So make sure you change all of the prims at once.  (If you have some prims that you want to be None, and some Convex Hull, you might convert them all to None first, and then convert some from None to Convex Hull.)
+2) The root prim can never be "None"; it must always be "Prim" or "Convex Hull".  Thus, you should make sure that the root prim of your build is something BORING, preferably a box (or maybe a cylinder or sphere), something with a very low PC.
+3) Make sure you set flexiprims to "None"; apparently they have an advanced physics cost, which is insane because they should be phantom anyway?
+
+------------------------------------------------------------------------------------------
+PHYSICS COST AND PHYSICAL OBJECTS:
+If you want to convert your build to a physical object, like a vehicle, there is good news and bad news:
+1) The good news: in the old system, you can only make an object physical if it had 32 or fewer prims.  In the new system, it's the *physics cost* that must be 32 or less.  You can have a car with a large number of prims and a large LI, so long as you set the physics type of most of those prims to "None".  Remember though, that if you want to drive that car through other people's parcels, they might not have the free LI available to accomodate you.
+2) The bad news: when you make an object physical, its physics cost actually goes up according to the formula
+new_PC = old_PC * (1+0.04*A)
+where A is the average area of the faces of the object's bounding box.  (That is, if the bounding box has dimensions x, y, and z, A is equal to (x*y+y*z+x*z)/3.)  That means that the PC of a 1m cube increases by 4% when it's made physical; for a 2m^3 cube, 16%, and so forth.  This new_PC does not have to remain below 32, but it does affect your build's LI.
+Remember that all of this only applies if your build is in the new system; if you keep it in the old system, then the old rules apply.
